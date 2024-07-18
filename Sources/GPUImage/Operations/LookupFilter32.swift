@@ -8,7 +8,7 @@ public class LookupFilter32: BasicOperation {
     }
 
     public init() {
-        super.init(fragmentFunctionName: "lookupFragment", numberOfInputs: 2)
+        super.init(fragmentFunctionName: "lookup32Fragment", numberOfInputs: 2)
 
         ({ intensity = 1.0 })()
     }
