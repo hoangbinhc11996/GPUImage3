@@ -24,14 +24,14 @@ fragment half4 lookup32Fragment(TwoInputVertexIO fragmentInput [[stage_in]],
     half2 quad2;
     quad2.y = floor(ceil(blueColor) / 8.0h);
     quad2.x = ceil(blueColor) - (quad2.y * 8.0h);
-    
+
     float2 texPos1;
-    texPos1.x = (quad1.x * 32.0 + 0.5 + 31.0 * base.r) / 256.0;
-    texPos1.y = (quad1.y * 32.0 + 0.5 + 31.0 * base.g) / 128.0;
+    texPos1.x = (quad1.x * 0.125) + 0.5/256.0 + ((0.125 - 1.0/256.0) * base.r);
+    texPos1.y = (quad1.y * 0.25) + 0.5/128.0 + ((0.25 - 1.0/128.0) * base.g);
     
     float2 texPos2;
-    texPos2.x = (quad2.x * 32.0 + 0.5 + 31.0 * base.r) / 256.0;
-    texPos2.y = (quad2.y * 32.0 + 0.5 + 31.0 * base.g) / 128.0;
+    texPos2.x = (quad2.x * 0.125) + 0.5/256.0 + ((0.125 - 1.0/256.0) * base.r);
+    texPos2.y = (quad2.y * 0.25) + 0.5/128.0 + ((0.25 - 1.0/128.0) * base.g);
     
     constexpr sampler quadSampler3;
     half4 newColor1 = inputTexture2.sample(quadSampler3, texPos1);
