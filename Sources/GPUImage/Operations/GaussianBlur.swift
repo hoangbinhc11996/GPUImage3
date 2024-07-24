@@ -4,12 +4,14 @@ public class GaussianBlur: BasicOperation {
     public var blurRadiusInPixels: Float = 2.0 {
         didSet {
             if self.useMetalPerformanceShaders, #available(iOS 9, macOS 10.13, *) {
-                if let oldBlur = internalMPSImageGaussianBlur {
-                    oldBlur.setPurgeableState(.empty)
-                }
-                internalMPSImageGaussianBlur = MPSImageGaussianBlur(
+                // Release the old blur if it exists
+                internalMPSImageGaussianBlur = nil
+                
+                // Create a new MPSImageGaussianBlur with the updated radius
+                let newBlur = MPSImageGaussianBlur(
                     device: sharedMetalRenderingDevice.device, sigma: blurRadiusInPixels)
-                (internalMPSImageGaussianBlur as? MPSImageGaussianBlur)?.edgeMode = .clamp
+                newBlur.edgeMode = .clamp
+                internalMPSImageGaussianBlur = newBlur
             } else {
                 fatalError("Gaussian blur not yet implemented on pre-MPS OS versions")
                 //                uniformSettings["convolutionKernel"] = convolutionKernel
