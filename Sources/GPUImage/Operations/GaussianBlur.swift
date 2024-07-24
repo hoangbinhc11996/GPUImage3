@@ -4,6 +4,9 @@ public class GaussianBlur: BasicOperation {
     public var blurRadiusInPixels: Float = 2.0 {
         didSet {
             if self.useMetalPerformanceShaders, #available(iOS 9, macOS 10.13, *) {
+                if let oldBlur = internalMPSImageGaussianBlur {
+                    oldBlur.setPurgeableState(.empty)
+                }
                 internalMPSImageGaussianBlur = MPSImageGaussianBlur(
                     device: sharedMetalRenderingDevice.device, sigma: blurRadiusInPixels)
                 (internalMPSImageGaussianBlur as? MPSImageGaussianBlur)?.edgeMode = .clamp
@@ -13,7 +16,7 @@ public class GaussianBlur: BasicOperation {
             }
         }
     }
-    var internalMPSImageGaussianBlur: NSObject?
+    var internalMPSImageGaussianBlur: MPSImageGaussianBlur?
 
     public init() {
         super.init(fragmentFunctionName: "passthroughFragment")
@@ -32,9 +35,8 @@ public class GaussianBlur: BasicOperation {
     @available(iOS 9, macOS 10.13, *) func usingMPSImageGaussianBlur(
         commandBuffer: MTLCommandBuffer, inputTextures: [UInt: Texture], outputTexture: Texture
     ) {
-        (internalMPSImageGaussianBlur as? MPSImageGaussianBlur)?.encode(
+        internalMPSImageGaussianBlur?.encode(
             commandBuffer: commandBuffer, sourceTexture: inputTextures[0]!.texture,
             destinationTexture: outputTexture.texture)
     }
-
 }
