@@ -32,10 +32,13 @@ extension MTLCommandBuffer {
         imageVertices: [Float] = standardImageVertices, outputTexture: Texture,
         outputOrientation: ImageOrientation = .portrait
     ) {
-        let vertexBuffer = sharedMetalRenderingDevice.device.makeBuffer(
+        guard let vertexBuffer = sharedMetalRenderingDevice.device.makeBuffer(
             bytes: imageVertices,
             length: imageVertices.count * MemoryLayout<Float>.size,
-            options: [])!
+            options: []) else {
+            print("renderQuad: failed to create vertex buffer")
+            return
+        }
         vertexBuffer.label = "Vertices"
 
         let renderPass = MTLRenderPassDescriptor()
@@ -45,27 +48,35 @@ extension MTLCommandBuffer {
         renderPass.colorAttachments[0].loadAction = .clear
 
         guard let renderEncoder = self.makeRenderCommandEncoder(descriptor: renderPass) else {
-            fatalError("Could not create render encoder")
+            print("renderQuad: could not create render encoder")
+            return
         }
+
         renderEncoder.setFrontFacing(.counterClockwise)
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
 
-        for textureIndex in 0..<inputTextures.count {
-            let currentTexture = inputTextures[UInt(textureIndex)]!
+        for (key, currentTexture) in inputTextures {
+            let coords = currentTexture.textureCoordinates(
+                for: outputOrientation,
+                normalized: useNormalizedTextureCoordinates
+            )
 
-            let inputTextureCoordinates = currentTexture.textureCoordinates(
-                for: outputOrientation, normalized: useNormalizedTextureCoordinates)
-            let textureBuffer = sharedMetalRenderingDevice.device.makeBuffer(
-                bytes: inputTextureCoordinates,
-                length: inputTextureCoordinates.count * MemoryLayout<Float>.size,
-                options: [])!
-            textureBuffer.label = "Texture Coordinates"
+            guard let texBuffer = device.makeBuffer(
+                bytes: coords,
+                length: coords.count * MemoryLayout<Float>.size,
+                options: []) else {
+                print("renderQuad: failed to create texture coordinate buffer for key \(key)")
+                continue
+            }
 
-            renderEncoder.setVertexBuffer(textureBuffer, offset: 0, index: 1 + textureIndex)
-            renderEncoder.setFragmentTexture(currentTexture.texture, index: textureIndex)
+            texBuffer.label = "Texture Coordinates"
+            renderEncoder.setVertexBuffer(texBuffer, offset: 0, index: 1 + Int(key))
+            renderEncoder.setFragmentTexture(currentTexture.texture, index: Int(key))
         }
+
         uniformSettings?.restoreShaderSettings(renderEncoder: renderEncoder)
+
         renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         renderEncoder.endEncoding()
     }
