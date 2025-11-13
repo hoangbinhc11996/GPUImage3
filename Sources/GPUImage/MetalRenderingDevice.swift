@@ -12,20 +12,9 @@ public class MetalRenderingDevice {
     public let commandQueue: MTLCommandQueue
     public let shaderLibrary: MTLLibrary
     public let metalPerformanceShadersAreSupported: Bool
-
-    lazy var passthroughRenderState: MTLRenderPipelineState = {
-        let (pipelineState, _, _) = generateRenderPipelineState(
-            device: self, vertexFunctionName: "oneInputVertex",
-            fragmentFunctionName: "passthroughFragment", operationName: "Passthrough")
-        return pipelineState
-    }()
-
-    lazy var colorSwizzleRenderState: MTLRenderPipelineState = {
-        let (pipelineState, _, _) = generateRenderPipelineState(
-            device: self, vertexFunctionName: "oneInputVertex",
-            fragmentFunctionName: "colorSwizzleFragment", operationName: "ColorSwizzle")
-        return pipelineState
-    }()
+    // Precompute and strongly retain pipeline states to avoid lazy race conditions across threads.
+    public let passthroughRenderState: MTLRenderPipelineState
+    public let colorSwizzleRenderState: MTLRenderPipelineState
 
     init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -49,5 +38,22 @@ public class MetalRenderingDevice {
         }
 
         self.shaderLibrary = defaultLibrary
+        
+        // Build pipeline states after shader library is available
+        let (passthroughPSO, _, _) = generateRenderPipelineState(
+            device: self,
+            vertexFunctionName: "oneInputVertex",
+            fragmentFunctionName: "passthroughFragment",
+            operationName: "Passthrough"
+        )
+        self.passthroughRenderState = passthroughPSO
+        
+        let (colorSwizzlePSO, _, _) = generateRenderPipelineState(
+            device: self,
+            vertexFunctionName: "oneInputVertex",
+            fragmentFunctionName: "colorSwizzleFragment",
+            operationName: "ColorSwizzle"
+        )
+        self.colorSwizzleRenderState = colorSwizzlePSO
     }
 }

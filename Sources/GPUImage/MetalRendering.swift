@@ -62,7 +62,7 @@ extension MTLCommandBuffer {
                 normalized: useNormalizedTextureCoordinates
             )
 
-            guard let texBuffer = device.makeBuffer(
+            guard let texBuffer = sharedMetalRenderingDevice.device.makeBuffer(
                 bytes: coords,
                 length: coords.count * MemoryLayout<Float>.size,
                 options: []) else {
