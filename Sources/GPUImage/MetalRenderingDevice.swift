@@ -15,6 +15,33 @@ public class MetalRenderingDevice {
     // Precompute and strongly retain pipeline states to avoid lazy race conditions across threads.
     public let passthroughRenderState: MTLRenderPipelineState
     public let colorSwizzleRenderState: MTLRenderPipelineState
+    
+    private static func makeRenderPipelineState(
+        device: MTLDevice,
+        library: MTLLibrary,
+        vertexFunctionName: String,
+        fragmentFunctionName: String,
+        operationName: String
+    ) -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: vertexFunctionName) else {
+            fatalError("\(operationName): could not compile vertex function \(vertexFunctionName)")
+        }
+        guard let fragmentFunction = library.makeFunction(name: fragmentFunctionName) else {
+            fatalError("\(operationName): could not compile fragment function \(fragmentFunctionName)")
+        }
+        
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        descriptor.rasterSampleCount = 1
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        
+        do {
+            return try device.makeRenderPipelineState(descriptor: descriptor)
+        } catch {
+            fatalError("Could not create render pipeline state for vertex:\(vertexFunctionName), fragment:\(fragmentFunctionName), error:\(error)")
+        }
+    }
 
     init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -39,21 +66,19 @@ public class MetalRenderingDevice {
 
         self.shaderLibrary = defaultLibrary
         
-        // Build pipeline states after shader library is available
-        let (passthroughPSO, _, _) = generateRenderPipelineState(
-            device: self,
+        // Build pipeline states after shader library is available without referencing self before full init
+        self.passthroughRenderState = MetalRenderingDevice.makeRenderPipelineState(
+            device: self.device,
+            library: self.shaderLibrary,
             vertexFunctionName: "oneInputVertex",
             fragmentFunctionName: "passthroughFragment",
-            operationName: "Passthrough"
-        )
-        self.passthroughRenderState = passthroughPSO
+            operationName: "Passthrough")
         
-        let (colorSwizzlePSO, _, _) = generateRenderPipelineState(
-            device: self,
+        self.colorSwizzleRenderState = MetalRenderingDevice.makeRenderPipelineState(
+            device: self.device,
+            library: self.shaderLibrary,
             vertexFunctionName: "oneInputVertex",
             fragmentFunctionName: "colorSwizzleFragment",
-            operationName: "ColorSwizzle"
-        )
-        self.colorSwizzleRenderState = colorSwizzlePSO
+            operationName: "ColorSwizzle")
     }
 }
