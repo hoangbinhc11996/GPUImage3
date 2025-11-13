@@ -12,7 +12,6 @@ public class MetalRenderingDevice {
     public let commandQueue: MTLCommandQueue
     public let shaderLibrary: MTLLibrary
     public let metalPerformanceShadersAreSupported: Bool
-    // Precompute and strongly retain pipeline states to avoid lazy race conditions across threads.
     public let passthroughRenderState: MTLRenderPipelineState
     public let colorSwizzleRenderState: MTLRenderPipelineState
     
@@ -66,7 +65,6 @@ public class MetalRenderingDevice {
 
         self.shaderLibrary = defaultLibrary
         
-        // Build pipeline states after shader library is available without referencing self before full init
         self.passthroughRenderState = MetalRenderingDevice.makeRenderPipelineState(
             device: self.device,
             library: self.shaderLibrary,
