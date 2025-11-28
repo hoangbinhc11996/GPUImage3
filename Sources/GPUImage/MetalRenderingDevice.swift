@@ -8,12 +8,12 @@ public class MetalRenderingDevice {
     // MTLDevice
     // MTLCommandQueue
 
-    public let device: MTLDevice
-    public let commandQueue: MTLCommandQueue
-    public let shaderLibrary: MTLLibrary
-    public let metalPerformanceShadersAreSupported: Bool
-    public let passthroughRenderState: MTLRenderPipelineState
-    public let colorSwizzleRenderState: MTLRenderPipelineState
+    public private(set) var device: MTLDevice
+    public private(set) var commandQueue: MTLCommandQueue
+    public private(set) var shaderLibrary: MTLLibrary
+    public private(set) var metalPerformanceShadersAreSupported: Bool
+    public private(set) var passthroughRenderState: MTLRenderPipelineState
+    public private(set) var colorSwizzleRenderState: MTLRenderPipelineState
     
     private static func makeRenderPipelineState(
         device: MTLDevice,
@@ -75,6 +75,33 @@ public class MetalRenderingDevice {
         self.colorSwizzleRenderState = MetalRenderingDevice.makeRenderPipelineState(
             device: self.device,
             library: self.shaderLibrary,
+            vertexFunctionName: "oneInputVertex",
+            fragmentFunctionName: "colorSwizzleFragment",
+            operationName: "ColorSwizzle")
+    }
+
+    // Allow host apps to override the GPUImage device/queue/library to match their renderer.
+    public func overrideDevice(_ externalDevice: MTLDevice) {
+        guard device.registryID != externalDevice.registryID else { return }
+        device = externalDevice
+        guard let queue = externalDevice.makeCommandQueue() else { return }
+        commandQueue = queue
+        if #available(iOS 9, macOS 10.13, *) {
+            metalPerformanceShadersAreSupported = MPSSupportsMTLDevice(externalDevice)
+        } else {
+            metalPerformanceShadersAreSupported = false
+        }
+        guard let lib = try? externalDevice.makeDefaultLibrary(bundle: Bundle.module) else { return }
+        shaderLibrary = lib
+        passthroughRenderState = MetalRenderingDevice.makeRenderPipelineState(
+            device: externalDevice,
+            library: lib,
+            vertexFunctionName: "oneInputVertex",
+            fragmentFunctionName: "passthroughFragment",
+            operationName: "Passthrough")
+        colorSwizzleRenderState = MetalRenderingDevice.makeRenderPipelineState(
+            device: externalDevice,
+            library: lib,
             vertexFunctionName: "oneInputVertex",
             fragmentFunctionName: "colorSwizzleFragment",
             operationName: "ColorSwizzle")
